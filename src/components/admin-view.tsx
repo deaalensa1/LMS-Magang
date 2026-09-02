@@ -16,6 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { roleLabel, type AppRole } from "@/hooks/use-auth";
 
 type Module = {
   id: string;
@@ -63,6 +64,42 @@ export function AdminView() {
       if (error) throw error;
       return data ?? [];
     },
+  });
+
+  const usersQuery = useQuery({
+    queryKey: ["admin-users"],
+    queryFn: async () => {
+      const [{ data: profiles, error: profilesError }, { data: roles, error: rolesError }] =
+        await Promise.all([
+          supabase
+            .from("profiles")
+            .select("id, full_name, email, institution")
+            .order("full_name"),
+          supabase.from("user_roles").select("user_id, role"),
+        ]);
+      if (profilesError) throw profilesError;
+      if (rolesError) throw rolesError;
+      const roleByUser = new Map((roles ?? []).map((r) => [r.user_id, r.role as AppRole]));
+      return (profiles ?? []).map((p) => ({
+        ...p,
+        role: roleByUser.get(p.id) ?? null,
+      }));
+    },
+  });
+
+  const setUserRole = useMutation({
+    mutationFn: async ({ userId, role }: { userId: string; role: AppRole }) => {
+      const { error } = await supabase.rpc("set_user_role", {
+        _target_user_id: userId,
+        _new_role: role,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Role pengguna diubah.");
+      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
   });
 
   // module form
@@ -149,6 +186,7 @@ export function AdminView() {
           <TabsTrigger value="materi">Materi</TabsTrigger>
           <TabsTrigger value="kuis">Kuis</TabsTrigger>
           <TabsTrigger value="laporan">Laporan</TabsTrigger>
+          <TabsTrigger value="pengguna">Pengguna</TabsTrigger>
         </TabsList>
 
         <TabsContent value="materi" className="space-y-6 pt-6">
@@ -352,6 +390,51 @@ export function AdminView() {
               })}
               {(attemptsQuery.data ?? []).length === 0 && (
                 <p className="text-muted-foreground text-sm">Belum ada pengerjaan kuis.</p>
+              )}
+            </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="pengguna" className="space-y-6 pt-6">
+          <div className="glass p-6">
+            <h2 className="font-semibold">Kelola Pengguna</h2>
+            <p className="text-muted-foreground mt-1 text-sm">
+              Ubah role pengguna di sini, termasuk mengangkat admin baru — tidak perlu akses
+              database.
+            </p>
+            <div className="mt-4 space-y-3">
+              {(usersQuery.data ?? []).map((u) => (
+                <div
+                  key={u.id}
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-xl border p-3"
+                >
+                  <div>
+                    <p className="text-sm font-semibold">{u.full_name || "(tanpa nama)"}</p>
+                    <p className="text-muted-foreground text-xs">{u.email}</p>
+                    {u.institution && (
+                      <p className="text-muted-foreground text-xs">{u.institution}</p>
+                    )}
+                  </div>
+                  <Select
+                    value={u.role ?? ""}
+                    onValueChange={(v) =>
+                      setUserRole.mutate({ userId: u.id, role: v as AppRole })
+                    }
+                    disabled={setUserRole.isPending}
+                  >
+                    <SelectTrigger className="w-40">
+                      <SelectValue placeholder="Belum ada role" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="smk">{roleLabel.smk}</SelectItem>
+                      <SelectItem value="mahasiswa">{roleLabel.mahasiswa}</SelectItem>
+                      <SelectItem value="admin">{roleLabel.admin}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              ))}
+              {(usersQuery.data ?? []).length === 0 && (
+                <p className="text-muted-foreground text-sm">Belum ada pengguna terdaftar.</p>
               )}
             </div>
           </div>
