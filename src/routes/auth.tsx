@@ -160,7 +160,6 @@ function AuthPage() {
                     <SelectContent>
                       <SelectItem value="smk">Siswa SMK</SelectItem>
                       <SelectItem value="mahasiswa">Mahasiswa</SelectItem>
-                      <SelectItem value="admin">Admin</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
