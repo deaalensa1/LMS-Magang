@@ -56,6 +56,7 @@ export type Database = {
       profiles: {
         Row: {
           created_at: string
+          email: string
           full_name: string
           id: string
           institution: string | null
@@ -63,6 +64,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          email?: string
           full_name?: string
           id: string
           institution?: string | null
@@ -70,6 +72,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          email?: string
           full_name?: string
           id?: string
           institution?: string | null
@@ -234,12 +237,12 @@ export type Database = {
         }
         Returns: boolean
       }
-      submit_quiz_attempt: {
-        Args: { _answers: Json; _module_id: string }
-        Returns: {
-          score: number
-          total: number
-        }[]
+      set_user_role: {
+        Args: {
+          _new_role: Database["public"]["Enums"]["app_role"]
+          _target_user_id: string
+        }
+        Returns: undefined
       }
     }
     Enums: {
